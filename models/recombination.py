@@ -6,7 +6,7 @@ import argparse
 
 
 
-def recombinations(pval, chrom, dataset, map_path, eqtl_path):
+def recombinations(map_path, eqtl_path):
     df = pd.read_csv(map_path, compression='gzip', sep='\t')
     
     eqtl_info = pd.read_csv(eqtl_path, compression='gzip', sep='\t')
@@ -34,24 +34,14 @@ def recombinations(pval, chrom, dataset, map_path, eqtl_path):
 def main():
     parser = argparse.ArgumentParser()
     # parser.add_argument('--chrom', help='chromosome')
-    parser.add_argument('--pval', help='pval threshold')
-    parser.add_argument('--dataset', help='dataset')
     parser.add_argument('--outpath', help='output path')
     parser.add_argument('--map_path', help='path to genetic map')
     parser.add_argument('--eqtl_path', help='path to eqtl info')
     args = parser.parse_args()
     
-    
-    dataset = str(args.dataset)
-    if not args.pval:
-        pval = 'all'
-    
-    if not args.chrom:
-        for chrom in range(19,23):
-            eqtl_df = recombinations(pval, chrom, dataset)
-            eqtl_df.to_csv(args.outpath)
-    else:
-        eqtl_df = recombinations(pval, chrom, dataset, args.map_path, args.eqtl_path)
+
+    eqtl_df = recombinations(args.map_path, args.eqtl_path)
+    eqtl_df.to_csv(outpath)
     
 if __name__ == '__main__':
     main()

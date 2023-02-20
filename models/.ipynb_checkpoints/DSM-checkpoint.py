@@ -394,6 +394,8 @@ if __name__ == "__main__":
     parser.add_argument('--train_path', help="path to save training state")
     parser.add_argument('--scores_path', help="path to score matrix")
     parser.add_argument('--nexamples', help="number of haplos to link")
+    parser.add_argument('--cache_hmm', help="cache hmm scores")
+    parser.add_argument('--test_path', help="path to .pt file of trained model")
 
     args = parser.parse_args()
     epochs = int(args.epochs)
@@ -412,7 +414,7 @@ if __name__ == "__main__":
     
     
     #window = int(args.window)
-    print("caching version....")
+    # print("caching version....")
     
     lr = 0.025
     if args.learning_rate:
@@ -426,7 +428,7 @@ if __name__ == "__main__":
     if args.ref_size:
         ref_size = int(args.ref_size)
     
-    window_size = 750
+    window_size = 500
     if args.window_size:
         window_size = int(args.window_size)
         
@@ -439,17 +441,25 @@ if __name__ == "__main__":
         nwindows = int(neqtls / window_size) + 1
         gene_exp = args.testing_exp
         exp = np.load(gene_exp)
+        cache_hmm=None
+        hmm_path=None
+        if args.cache_hmm is not None:
+            cache_hmm = True
+            hmm_path = args.hmm_path
+        test_path = args.test_path
 
         
         for window in range(nwindows):
             with torch.no_grad():
-                scores = match_score(refpanel, haplos, exp, connectivity, window, window_size, ref_size=1000, learning_rate=0.025, device='cpu')
+                scores = match_score(refpanel, haplos, exp, connectivity, window, window_size, ref_size=1000, learning_rate=0.025, device='cpu', cache_hmm=cache_hmm, hmm_path=hmm_path, test_path=test_path)
                 np.save(args.match_path, scores.cpu().detach().numpy())
         sys.exit()
        
     if args.scores_path:
         scores = np.load(args.scores_path)
         matches = return(scores, args.nexamples)
+        print("Total matches: ", matches)
+        sys.exit()
                 
         
     else:

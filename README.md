@@ -30,7 +30,7 @@ Once trained, you can use DSM to score matches between example gene expression v
 * ref_panel: path to a numpy matrix containing the reference panel haplotypes. It should be nsnps x nrefindivs. Optionally you can provide the ref_size argument to subset the reference panel. Note that the **same** reference panel should be used in both testing and training to ensure optimal stability.
 * test_path: path to a saved PyTorch model
 * recomb: a pandas dataframe containing SNP coordinates for all eQTLs considered, along with the recombination rates. The field recombination_neffective500 is retrieved as the recombination rates. Example recombination rate generation is provided in recombination.py.
-* matching: turns on scoring mode
+* scorings: turns on scoring mode
 * scores_path: path to save the scores for the (gene expresion, genotype) pair passed above. Returns both the hmm score of the probability of the genotype alone as well as the DSM score for the match between the gene expression and genotype pair
 
 It is important that the reference panel used to train and the reference panel used to score are the same. Similarly, it also important that the SNP set is the same. Shifts in these may result in unstable or inaccurate scores. You can optionally call cache_hmm and/or hmm_path to cache and save the results of just the genotype probabilities. Once you have retrieved the scores, you can concatenate these scores into a matrix. The 0th index of the 0th axis should contain all the correct scores (of true matches), while the remaining indices should contain incorrect scores. The matching() function can find the links, for any of the three methods (DSM, EBL, GNB). 

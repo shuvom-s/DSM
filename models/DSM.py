@@ -379,6 +379,7 @@ if __name__ == "__main__":
     parser.add_argument('--window', help='window indexing')
     parser.add_argument('--epochs', help='number of training epochs')
     parser.add_argument('--scoring', help='scoring mode')
+    parser.add_argument('--matching', help='matching mode')
     parser.add_argument('--ref_size', help='reference panel size')
     parser.add_argument('--window_size', help='size of window')
     parser.add_argument('--chrom', help='chromosome number')
@@ -455,7 +456,7 @@ if __name__ == "__main__":
                 np.save(args.match_path, scores.cpu().detach().numpy())
         sys.exit()
        
-    if args.scores_path:
+    if args.matching:
         scores = np.load(args.scores_path)
         matches = return(scores, args.nexamples)
         print("Total matches: ", matches)

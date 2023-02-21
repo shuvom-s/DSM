@@ -107,3 +107,5 @@ We recommend the following pipeline:
 6. Generate the connectivity matrix by getting the eGene-eQTL pairs. An example script is provided in `cleaning/GTEx_FUSION_command_line.py`. This file also requires an eQTL info `.tsv` file specified via the `--eqtl_path` argument.
 7. Code to set the recombination rates can also be found in the `models/` folder as `recombination.py`. We assume that a `.tsv` file is passed in containing a standard eQTL coordinate set (e.g. `hg38`). You should also pass in a genetic map of the same build as the eQTL set via `--map_path` that contains centiMorgan coordinates. `--outpath` specifies the output path. An example of the input format expected is given in `examples/recombinations.txt.gz` (excluding the columns starting with `recombination_`). The genetic map can be a standard hg38 genetic map file.
 
+You can contact the authors at ssadhuka@mit.edu and dfridman@broadinstitute.org.
+

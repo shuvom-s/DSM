@@ -1,7 +1,7 @@
 # Discriminative Sequence Model (DSM)
 This repository provides code for this paper:
 
-S. Sadhuka, D. Fridman, B. Berger, and H. Cho _Assessing transcriptomic re-identification risks using discriminative sequence models_,  [RECOMB 2023](http://recomb2023.bilkent.edu.tr/program.html). 
+S. Sadhuka, D. Fridman, B. Berger, and H. Cho. _Assessing transcriptomic re-identification risks using discriminative sequence models_,  [RECOMB 2023](http://recomb2023.bilkent.edu.tr/program.html). 
 
 The paper is also under review at _Genome Research_.
 

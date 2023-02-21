@@ -109,6 +109,7 @@ def ebl(genos, prob_mat, gene_exp, connectivity, corr_thresh=0.45, extremity_thr
         to_replace[:,:,2] = np.log(np.ones(to_replace.shape[0]) * 0.001)
         
         prob_mat[list(below_thresh_idx), geno_idx,:] = to_replace
+    # print(prob_mat)
     return prob_mat
 
             
@@ -144,7 +145,7 @@ def main():
     
     
     gene_exp = np.load(args.gene_exp)
-    connectivity = np.load(args.connectivty)
+    connectivity = np.load(args.connectivity)
     
     ebl_mat = ebl(genos, prob_mat, gene_exp, connectivity, corr, extremity)
 

@@ -11,7 +11,7 @@ Our code to run the DSM is primarily written in Python. Most dependencies (e.g. 
 torch >= 1.8.1
 torch_sparse >= 0.6.11
 ``` 
-
+An example script for training and scoring is provided in `examples/example.sh`. Please note that this script runs on synthetic data.
 
 ## Training
 
@@ -44,7 +44,7 @@ The above input files are passed as arguments to `DSM.py`. In general, arguments
 
 Please note that the training is sensitive to the reference panel. Substantial mismatches between the genetic architectures in the training set and the reference panel can lead to poor training.
 
-Example data formats are provided in the `examples/` folder along with an example training script `example.sh`. These files contain synthetic data  — and hence should not be interpreted — but instead provide the proper dimensions for all of the matrices specified above.
+Example data formats are provided in the `examples/` folder along with an example training script `example.sh`. These files contain synthetic data  — and hence should not be interpreted — but instead provide the proper dimensions for all of the matrices specified above. The first line provides an example training script.
 
 
 ## Scoring

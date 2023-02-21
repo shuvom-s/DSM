@@ -244,6 +244,7 @@ class sparselinear_layer(torch.nn.Module):
 
         
 def open_and_train(ref_panel, gene_exp, haplos, connectivity_mat, window, size, epochs, recomb, testing = False, ref_size=1000, learning_rate=0.025, device='cpu', train_path=None):
+    print("training...")
     # nsnps x nindivs
     ref = np.load(ref_panel)[window*size:(window+1)*size,0:ref_size]
     assert(ref.shape[1] == ref_size)
@@ -277,43 +278,44 @@ def open_and_train(ref_panel, gene_exp, haplos, connectivity_mat, window, size, 
     
     model = OrdinalHMM(predictor_layer, ref_tensor, recomb_probs)
     PATH = train_path
-    # print("files ready...") 
+    print("files ready...") 
     
-    if not matching:
-        gexp = exp #[:530,:]
-        gexp_val = exp #[530:588,:]
-        # print(gexp.shape)
-        x_onehots = torch.transpose(haplos, 0, 1)[:,window*size:(window+1)*size,:]
+    # if not matching:
+    gexp = exp #[:530,:]
+    gexp_val = exp #[530:588,:]
+    print(gexp.shape)
+    x_onehots = torch.transpose(haplos, 0, 1)[:,window*size:(window+1)*size,:]
 
-        
-        start = time.time()
-        
-        torch.autograd.set_detect_anomaly(True)
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        
-        p_hmm = model.forward_pass_hmm(x_onehots)
 
-        outs = []
-        vals = []
-        for i in range(epochs):
-            optimizer.zero_grad()
-            out = model.forward(torch.Tensor(gexp), x_onehots)
-            # print(out)
-            outs.append(float(out.cpu().detach().numpy()))
+    start = time.time()
+
+    torch.autograd.set_detect_anomaly(True)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+    p_hmm = model.forward_pass_hmm(x_onehots)
+
+    outs = []
+    vals = []
+    for i in range(epochs):
+        optimizer.zero_grad()
+        out = model.forward(torch.Tensor(gexp), x_onehots)
+        # print(out)
+        outs.append(float(out.cpu().detach().numpy()))
+
+        out.backward()
+        optimizer.step()
+
+    print("Saving model...")
+    torch.save(model.state_dict(), train_path)
             
-            out.backward()
-            optimizer.step()
-          
-        torch.save(model.state_dict(), train_path)
-            
             
     
     
     
     
-def match_score(refpanel, haplos, gene_exp, connectivity, window, window_size, ref_size=None, learning_rate=0.025, device='cpu', cache_hmm=True, hmm_path=None, test_path=None):
+def match_score(refpanel, haplos, gene_exp, connectivity_mat, window, window_size, ref_size=None, learning_rate=0.025, device='cpu', cache_hmm=True, hmm_path=None, test_path=None):
     
-    ref = np.load(ref_panel)[window*size:(window+1)*size]
+    ref = np.load(refpanel)[window*window_size:(window+1)*window_size]
     if ref_size is not None:
         ref =ref[:,0:ref_size]
         assert(ref.shape[1] == ref_size)
@@ -328,7 +330,7 @@ def match_score(refpanel, haplos, gene_exp, connectivity, window, window_size, r
     haplos[haplos < 0] = 0
     
     haplos = torch.nn.functional.one_hot(torch.tensor(haplos).to(device).long(), num_classes=2)
-    x_onehots = torch.transpose(haplos, 0, 1)[0:2*gexp.shape[0],window*size:(window+1)*size,:]
+    x_onehots = torch.transpose(haplos, 0, 1)[0:2*gexp.shape[0],window*window_size:(window+1)*window_size,:]
     
     # indices to connect - should be same as training
     connectivity = np.load(connectivity_mat)
@@ -337,11 +339,11 @@ def match_score(refpanel, haplos, gene_exp, connectivity, window, window_size, r
     
     
     nsnps = ref.shape[0]
-    ngenes = exp.shape[1]
-    connectivity_ub = connectivity[:,connectivity[0,:] < (window+1)*size]
-    connectivity_lb = connectivity_ub[:,connectivity_ub[0,:] >= window*size]
-    nsnps = size
-    connectivity_lb[0,:] = connectivity_lb[0,:] - window*size
+    ngenes = gexp.shape[1]
+    connectivity_ub = connectivity[:,connectivity[0,:] < (window+1)*window_size]
+    connectivity_lb = connectivity_ub[:,connectivity_ub[0,:] >= window*window_size]
+    nsnps = window_size
+    connectivity_lb[0,:] = connectivity_lb[0,:] - window*window_size
     
     # initialize model, load state dict
     predictor_layer = torch.nn.Sequential(sparselinear_layer(ngenes, nsnps, connectivity=torch.tensor(connectivity_lb).to(device), bias=True))
@@ -352,12 +354,13 @@ def match_score(refpanel, haplos, gene_exp, connectivity, window, window_size, r
     PATH = test_path
     
     model.load_state_dict(torch.load(PATH))
+    
     if cache_hmm:
         p_hmm = model.forward_pass_hmm(x_onehots)
-        np.save(hmm_path, p_hmm.cpu.detach().numpy())
+        np.save(hmm_path, p_hmm.cpu().detach().numpy())
         
     else:
-        p_hmm = np.load(hmm_path, p_hmm.cpu.detach().numpy())
+        p_hmm = np.load(hmm_path)
         
     score = model.forward(torch.Tensor(gexp), x_onehots, training=False)
     return p_hmm, score
@@ -397,9 +400,13 @@ if __name__ == "__main__":
     parser.add_argument('--nexamples', help="number of haplos to link")
     parser.add_argument('--cache_hmm', help="cache hmm scores")
     parser.add_argument('--test_path', help="path to .pt file of trained model")
+    parser.add_argument('--hmm_path', help="path to save HMM probabilities")
 
     args = parser.parse_args()
-    epochs = int(args.epochs)
+    
+    epochs = 50
+    if args.epochs is not None:
+        epochs = int(args.epochs)
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
@@ -431,17 +438,18 @@ if __name__ == "__main__":
     
     window_size = 500
     if args.window_size:
+        # print("window size")
         window_size = int(args.window_size)
         
     
     if args.scoring:
         testing = True
-        eqtls = args.testing_haplos
-        haplos = np.load(eqtls)
-        neqtls = haplos.shape[0]
-        nwindows = int(neqtls / window_size) + 1
-        gene_exp = args.testing_exp
-        exp = np.load(gene_exp)
+        haplos = args.testing_haplos
+        # haplos = np.load(eqtls)
+        # neqtls = haplos.shape[0]
+        # nwindows = int(neqtls / window_size) + 1
+        exp = args.testing_exp
+        # exp = np.load(gene_exp)
         cache_hmm=None
         hmm_path=None
         if args.cache_hmm is not None:
@@ -450,16 +458,17 @@ if __name__ == "__main__":
         test_path = args.test_path
 
         
-        for window in range(nwindows):
-            with torch.no_grad():
-                scores = match_score(refpanel, haplos, exp, connectivity, window, window_size, ref_size=1000, learning_rate=0.025, device='cpu', cache_hmm=cache_hmm, hmm_path=hmm_path, test_path=test_path)
-                np.save(args.match_path, scores.cpu().detach().numpy())
+        # for window in range(nwindows):
+        with torch.no_grad():
+            scores = match_score(refpanel, haplos, exp, connectivity, window, window_size, ref_size=1000, learning_rate=0.025, device='cpu', cache_hmm=cache_hmm, hmm_path=hmm_path, test_path=test_path)
+            np.save(args.match_path, scores[1].cpu().detach().numpy())
         sys.exit()
        
     if args.matching:
         scores = np.load(args.scores_path)
-        matches = return(scores, args.nexamples)
+        matches = matching(scores, args.nexamples)
         print("Total matches: ", matches)
+        #return matches
         sys.exit()
                 
         
@@ -467,7 +476,7 @@ if __name__ == "__main__":
         if args.train_path is None:
             raise Exception("Please provide a path to save the trained model")
         
-        open_and_train(refpanel, geneexp, eqtls, connectivity, window, window_size, epochs, recomb, testing=False, ref_size=ref_size, learning_rate = lr, device=device, train_path)
+        open_and_train(refpanel, geneexp, eqtls, connectivity, window, window_size, epochs, recomb, testing=False, ref_size=ref_size, learning_rate = lr, device=device, train_path = args.train_path)
         sys.exit()
 
 

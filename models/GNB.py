@@ -12,6 +12,7 @@ import torch
 from scipy.special import logsumexp
 from scipy import stats
 from copy import deepcopy
+import argparse
 
 
 def corr_coeff(A,B) :
@@ -217,47 +218,7 @@ def Bayesian_model_fit_2(y_train, X_train, y_test, X_test, connectivity_mat):
     return genotype_log_prob_normalized
 
 
-
-def run_chrom(chrom, gene_exp, connectivity, genos, window_start, window_end=None):
-    # print(gene_exp.shape)
-    # print(connectivity.shape)
-    print(genos.shape)
-    genos = genos.T
-    # gene_exp = gene_exp.T
-    x_train = torch.Tensor(gene_exp[0:450,:])
-    x_test = torch.Tensor(gene_exp[450:588,:])
-    
-    expand_xtrain = torch.zeros(2*x_train.shape[0], x_train.shape[1])
-    expand_xtrain[::2, :] = x_train   # Index every second row, starting from 0
-    expand_xtrain[1::2, :] = x_train
-    
-    expand_xtest = torch.zeros(2*x_test.shape[0], x_test.shape[1])
-    expand_xtest[::2, :] = x_test   # Index every second row, starting from 0
-    expand_xtest[1::2, :] = x_test
-    
-    
-    if window_end is not None:
-        y_train = torch.Tensor(genos[0:900,window_start:window_end])
-        y_test = torch.Tensor(genos[900:1176,window_start:window_end])
-        connectivity_ub = connectivity[:,connectivity[0,:] < window_end]
-        connectivity_lb = connectivity_ub[:,connectivity_ub[0,:] >= window_start]
-        
-    else:
-        y_train = torch.Tensor(genos[0:900,window_start:])
-        y_test = torch.Tensor(genos[900:1176,window_start:])
-        connectivity_lb = connectivity[:,connectivity[0,:] >= window_start]
-    
-    
-    
-    # nsnps = size
-    connectivity_lb[0,:] = connectivity_lb[0,:] - window_start
-    
-    
-    # print(connectivity_lb)
-    mat = baseline.Bayesian_model_fit_haplo(y_train, expand_xtrain, y_test, expand_xtest, connectivity_lb)
-    return mat
-    
-def run_chrom_geno(chrom, gene_exp, connectivity, genos, window_start, train_test_split, window_end=None):
+def run_chrom_geno(gene_exp, connectivity, genos, window_start, train_test_split, window_end=None):
     genos = genos.T
     # gene_exp = gene_exp.T
     x_train = torch.Tensor(gene_exp[0:train_test_split,:])
@@ -268,14 +229,14 @@ def run_chrom_geno(chrom, gene_exp, connectivity, genos, window_start, train_tes
     if window_end is not None:
         y_train = torch.Tensor(genos[0:train_test_split,window_start:window_end])
         y_test = torch.Tensor(genos[train_test_split:,window_start:window_end])
-        prob_mat = prob_mat[:,window_start:window_end,:]
+        # prob_mat = prob_mat[:,window_start:window_end,:]
         connectivity_ub = connectivity[:,connectivity[0,:] < window_end]
         connectivity_lb = connectivity_ub[:,connectivity_ub[0,:] >= window_start]
         
     else:
         y_train = torch.Tensor(genos[0:train_test_split,window_start:])
         y_test = torch.Tensor(genos[train_test_split:train_test_split,window_start:])
-        prob_mat = prob_mat[:,window_start:window_end,:]
+        # prob_mat = prob_mat[:,window_start:window_end,:]
         connectivity_lb = connectivity[:,connectivity[0,:] >= window_start]
     
     
@@ -283,7 +244,7 @@ def run_chrom_geno(chrom, gene_exp, connectivity, genos, window_start, train_tes
     # nsnps = size
     connectivity_lb[0,:] = connectivity_lb[0,:] - window_start
 
-    mat = baseline.Bayesian_model_fit_2(y_train, x_train, y_test, x_test, connectivity_lb)
+    mat = Bayesian_model_fit_2(y_train, x_train, y_test, x_test, connectivity_lb)
     return mat
 
     
@@ -301,12 +262,13 @@ def main():
     
     genos = np.load(args.genos)
     
-    connectivity_mat = np.load(args.connectivity)
+    connectivity = np.load(args.connectivity)
+    train_test_split = args.train_test_split
 
     # geneexp = np.load(args.gene_exp)
     
-    exp = np.load(geneexp)
-    connectivity = np.load(connectivity_mat)
+    exp = np.load(args.gene_exp)
+    # connectivity = np.load(connectivity_mat)
 
     window_size = 2500
     nwindows = genos.shape[0] // window_size
@@ -317,15 +279,59 @@ def main():
         
         if window != nwindows:
             window_end = (window+1)*window_size
-            mat = run_chrom_geno(chrom, exp, connectivity, eqtl_genos, window_start, window_end)
+            mat = run_chrom_geno(exp, connectivity, genos, window_start, int(train_test_split), window_end=window_end)
         else:
-            mat = run_chrom_geno(chrom, exp, connectivity, eqtl_genos, window_start)
+            mat = run_chrom_geno(exp, connectivity, genos, window_start, int(train_test_split))
+        print(mat.shape)
         mats.append(mat)
     total_mat = np.concatenate(mats, axis=1)
     
 
-    np.save(gnb_path, total_mat)
+    np.save(args.gnb_path, total_mat)
 
     
 if __name__ == "__main__":
     main()
+    
+    
+
+# def run_chrom(chrom, gene_exp, connectivity, genos, window_start, window_end=None):
+#     # print(gene_exp.shape)
+#     # print(connectivity.shape)
+#     print(genos.shape)
+#     genos = genos.T
+#     # gene_exp = gene_exp.T
+#     x_train = torch.Tensor(gene_exp[0:450,:])
+#     x_test = torch.Tensor(gene_exp[450:588,:])
+    
+#     expand_xtrain = torch.zeros(2*x_train.shape[0], x_train.shape[1])
+#     expand_xtrain[::2, :] = x_train   # Index every second row, starting from 0
+#     expand_xtrain[1::2, :] = x_train
+    
+#     expand_xtest = torch.zeros(2*x_test.shape[0], x_test.shape[1])
+#     expand_xtest[::2, :] = x_test   # Index every second row, starting from 0
+#     expand_xtest[1::2, :] = x_test
+    
+    
+#     if window_end is not None:
+#         y_train = torch.Tensor(genos[0:900,window_start:window_end])
+#         y_test = torch.Tensor(genos[900:1176,window_start:window_end])
+#         connectivity_ub = connectivity[:,connectivity[0,:] < window_end]
+#         connectivity_lb = connectivity_ub[:,connectivity_ub[0,:] >= window_start]
+        
+#     else:
+#         y_train = torch.Tensor(genos[0:900,window_start:])
+#         y_test = torch.Tensor(genos[900:1176,window_start:])
+#         connectivity_lb = connectivity[:,connectivity[0,:] >= window_start]
+    
+    
+    
+#     # nsnps = size
+#     connectivity_lb[0,:] = connectivity_lb[0,:] - window_start
+    
+    
+#     # print(connectivity_lb)
+#     mat = baseline.Bayesian_model_fit_haplo(y_train, expand_xtrain, y_test, expand_xtest, connectivity_lb)
+#     return mat
+    
+# 

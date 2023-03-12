@@ -9,8 +9,11 @@ import os
 import time
 
 
-def loss_fn(p_xe):
-    loss = -torch.sum(p_xe)
+def loss_fn(p_xe, p_xe_negative=None, contrastive=False):
+    if not contrastive:
+        loss = -torch.sum(p_xe)
+    else:
+        loss = -torch.sum(p_xe) + torch.sum(p_xe_negative)
     return loss
 
 

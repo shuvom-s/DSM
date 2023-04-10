@@ -9,8 +9,11 @@ import os
 import time
 
 
-def loss_fn(p_xe):
-    loss = -torch.sum(p_xe)
+def loss_fn(p_xe, p_xe_negative=None, contrastive=False):
+    if not contrastive:
+        loss = -torch.sum(p_xe)
+    else:
+        loss = -torch.sum(p_xe) + torch.sum(p_xe_negative)
     return loss
 
 
@@ -518,28 +521,3 @@ if __name__ == "__main__":
 #         gexp = exp[test:,:]
 #         gexp_copy = exp[test:,:]
 #         x_onehots = torch.transpose(haplos, 0, 1)[test*2:,window*size:(window+1)*size,:]
-        
-#         if not os.path.exists(PATH):
-#             return
-        
-#         model.load_state_dict(torch.load(PATH))
-#         p_hmm = model.forward_pass_hmm(x_onehots)
-        
-#         p_xe = model.forward(torch.Tensor(gexp), x_onehots, training=False)
-        
-#         p_hmms = p_hmm.cpu().detach().numpy().reshape(testnum, 2).sum(axis=1)
-        
-        
-#         # print(p_xe - p_hmms)
-        
-#         # nindivs x nindivs
-#         reid = np.zeros((testnum, testnum))
-#         reid[0,:] = p_xe.cpu
-        
-#         for i in range(1,testnum):
-#             p_xe_z = model.forward(torch.Tensor(np.roll(gexp_copy, i, axis=0)), x_onehots, training=False)
-#             p_xe_zs = p_xe_z.cpu().detach().numpy().reshape(testnum, 2).sum(axis=1)
-            
-#             reid[i,:] = p_xe_zs
-        
-#         np.save(PATH, reid)

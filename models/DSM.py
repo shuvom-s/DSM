@@ -313,11 +313,13 @@ def open_and_train(ref_panel, gene_exp, haplos, connectivity_mat, window, size, 
             
             
     
-    
-    
-    
 def match_score(refpanel, haplos, gene_exp, connectivity_mat, window, window_size, ref_size=None, learning_rate=0.025, device='cpu', cache_hmm=True, hmm_path=None, test_path=None):
-    
+    '''
+    Match score computation for a specific alignment of vectors. That is,
+    for a vector X = [x1, x2, ..., xn] of genotypes and a vector E = [e1, e2, ..., en] of gene
+    expression profiles, this function returns an n-dimensional vector where the ith entry is
+    p(xi|ei).
+    '''
     ref = np.load(refpanel)[window*window_size:(window+1)*window_size]
     if ref_size is not None:
         ref =ref[:,0:ref_size]
@@ -367,6 +369,95 @@ def match_score(refpanel, haplos, gene_exp, connectivity_mat, window, window_siz
         
     score = model.forward(torch.Tensor(gexp), x_onehots, training=False)
     return p_hmm, score
+    
+    
+def match_score_rolling(refpanel, haplos, gene_exp, connectivity_mat, window, window_size, ref_size=None, learning_rate=0.025, device='cpu', cache_hmm=True, hmm_path=None, test_path=None, expnum=1, genonum=1):
+    '''
+    Rolling match score computes the pairwise match scores for an entire set of expression profiles
+    with a set of genotypes by using a probabilistic trick for renormalization of posteriors. That is,
+    for a vector X = [x1, x2, ..., xn] of genotypes and a vector E = [e1, e2, ..., em] of gene
+    expression profiles, this function returns an nxm matrix where the (i,j)th entry is p(xi|ej).
+    '''
+    
+    ref = np.load(refpanel)[window*window_size:(window+1)*window_size]
+    if ref_size is not None:
+        ref =ref[:,0:ref_size]
+        assert(ref.shape[1] == ref_size)
+    
+    # nindivs x ngenes
+    # load from desired test gene exp file
+    # gexp = np.load(gene_exp)
+    
+    # expnum indexes the start of the test gene expressions
+    gexp = exp[expnum:,:]
+    gexp_copy = exp[expnum:,:]
+    
+    # nindivs x nsnps x 2
+    # load from desired test haplotype file
+    haplos = np.load(haplos)
+    haplos[haplos < 0] = 0
+    
+    haplos = torch.nn.functional.one_hot(torch.tensor(haplos).to(device).long(), num_classes=2)
+    x_onehots = torch.transpose(haplos, 0, 1)[0:2*gexp.shape[0],window*window_size:(window+1)*window_size,:]
+    
+    # indices to connect - should be same as training
+    connectivity = np.load(connectivity_mat)
+    geno_info = pd.read_csv(recomb, sep="\t")
+    recomb_probs = torch.tensor(np.array(list(geno_info['recombination_neffective500']))).to(device)
+    
+    
+    nsnps = ref.shape[0]
+    ngenes = gexp.shape[1]
+    connectivity_ub = connectivity[:,connectivity[0,:] < (window+1)*window_size]
+    connectivity_lb = connectivity_ub[:,connectivity_ub[0,:] >= window*window_size]
+    nsnps = window_size
+    connectivity_lb[0,:] = connectivity_lb[0,:] - window*window_size
+    
+    # initialize model, load state dict
+    predictor_layer = torch.nn.Sequential(sparselinear_layer(ngenes, nsnps, connectivity=torch.tensor(connectivity_lb).to(device), bias=True))
+    
+    ref_tensor = torch.tensor(ref).to(device)
+    
+    model = OrdinalHMM(predictor_layer, ref_tensor, recomb_probs)
+    PATH = test_path
+    
+    model.load_state_dict(torch.load(PATH))
+    
+    if cache_hmm:
+        p_hmm = model.forward_pass_hmm(x_onehots)
+        np.save(hmm_path, p_hmm.cpu().detach().numpy())
+        
+    else:
+        p_hmm = np.load(hmm_path)
+        
+    p_xe = model.forward(torch.Tensor(gexp), x_onehots, training=False)
+    log_phi_tot = model.forward(torch.Tensor(gexp), x_onehots, training=False, z_only=True)
+    z_e = p_hmm + log_phi_tot - p_xe
+
+    p_xe_0 = p_xe.cpu().detach().numpy().reshape(genosnum, 2).sum(axis=1)
+    z_numpy = z_e.cpu().detach().numpy()
+
+    p_hmms = p_hmm.cpu().detach().numpy().reshape(genosnum, 2).sum(axis=1)
+    
+    scores = np.zeros((genosnum, expnum))
+    scores[0,:] = p_xe_0
+    
+    for i in range(1, genosnum):
+        score = model.forward(torch.Tensor(gexp), x_onehots, training=False)
+        z_roll = torch.Tensor(np.roll(z_numpy, 2*i, axis=0))
+        p_xe_z = p_hmm + log_phi_tot - z_roll
+        p_xe_zs = p_xe_z.cpu().detach().numpy().reshape(genosnum, 2).sum(axis=1)
+        scores[i,:] = p_xe_zs
+        
+    dsm_new = scores - p_hmms
+
+    for i in range(1,292):
+        dsm_new[i,:] = np.roll(dsm_new[i,:], -i)
+    
+    # reverse direction matching: e-->x
+    # print(len(np.where(dsm_new.argmax(axis=0) == 0)[0]))
+        
+    return p_hmms, dsm_new
         
     
 

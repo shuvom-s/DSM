@@ -12,6 +12,10 @@ import math
         
         
 def ebl(genos, prob_mat, gene_exp, connectivity, corr_thresh=0.45, extremity_thresh=0.95, train_test_split=588):
+    '''
+    Hybrid EBL model which collapses to GNB for non-extreme SNPs. For original, pass in matrix of zeros as prob mat and set extremity posteriors to
+    1.
+    '''
     prob_mat_copy = deepcopy(prob_mat)
     gene_exp_FUSION = gene_exp[train_test_split:,:]
 

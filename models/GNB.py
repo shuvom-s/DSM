@@ -97,7 +97,9 @@ def log_Norm_dist(X_mat, mu_mat, sigma_mat):
 
 # Function outputting Bayesian log(p(genotype|expression))
 def Bayesian_model_fit_2(y_train, X_train, y_test, X_test, connectivity_mat):
-
+    '''
+    Make sure to allocate enough memory for this function.
+    '''
     eGene_idx_mat = np.zeros((X_test.shape[1], y_test.shape[1]))
     eGene_idx_mat[connectivity_mat[1], connectivity_mat[0]] = 1 
     eGene_idx_mat = torch.tensor(eGene_idx_mat.T).unsqueeze(1)

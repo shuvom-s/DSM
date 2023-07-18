@@ -10,6 +10,7 @@ import time
 
 
 def loss_fn(p_xe, p_xe_negative=None, contrastive=False):
+    '''Loss function is log probability of observed sequences. If you want contrastive loss, then please also update code to pass in negative examples as well'''
     if not contrastive:
         loss = -torch.sum(p_xe)
     else:
@@ -18,13 +19,19 @@ def loss_fn(p_xe, p_xe_negative=None, contrastive=False):
 
 
 class OrdinalHMM(torch.nn.Module):
+    '''Initialize DSM'''
     def __init__(self, predictor: torch.nn.Module, ref_tensor: torch.Tensor, 
                 recombination_rates: torch.Tensor) -> None:
         super().__init__()
+        # predictor is the ordered logit model
         self.predictor = deepcopy(predictor)
         self.ref_tensor = ref_tensor
+        
+        # recombination rates should be precalculated, or you can set it to a default, like 0.01
         self.recomb_prob = torch.log(recombination_rates)
         self.eprob = 0.01
+        
+        # pseudocount to avoid 0 probabilities
         pseudocount = 1.0 
         self.emission_dosage_haplo = np.array([[(1-self.eprob), self.eprob],
                                             [self.eprob, (1-self.eprob)]])

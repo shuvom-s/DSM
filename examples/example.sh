@@ -18,8 +18,8 @@ python ../models/DSM.py  --testing_exp synthetic_expression.npy --testing_haplos
 # python ../models/DSM.py  --matching True --scores_path matches.npy
 
 ## training and testing GNB
-python ../models/GNB.py --gene_exp synthetic_expression.npy --genos synthetic_eqtls_genotypes.npy --train_test_split 500 --gnb_path gnb_probabilities.npy --connectivity synthetic_connectivity.npy
+python ../models/GNB_EBL.py --gene_exp synthetic_expression.npy --genos synthetic_eqtls_genotypes.npy --train_test_split 500 --save_path gnb_probabilities.npy --connectivity synthetic_connectivity.npy
 # 
 ## training and testing EBL
 ## note this is synthetic data so the correlation threshold is set very low so that some SNPs are actually correlated
-python ../models/EBL.py --gene_exp synthetic_expression.npy --genos synthetic_eqtls_genotypes.npy --train_test_split 500 --ebl_path ebl_probabilities.npy --corr 0.01 --extremity 0.9  --connectivity synthetic_connectivity.npy --prob_mat gnb_probabilities.npy
+python ../models/GNB_EBL.py --gene_exp synthetic_expression.npy --genos synthetic_eqtls_genotypes.npy --train_test_split 500 --save_path ebl_probabilities.npy --corr 0.01 --extremity 0.9  --connectivity synthetic_connectivity.npy --prob_mat gnb_probabilities.npy --method ebl
